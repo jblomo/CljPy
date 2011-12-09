@@ -1,0 +1,11 @@
+Metadata-Version: 1.0
+Name: CljPy
+Version: 0.0dev
+Summary: Clojure functions in Python
+Home-page: https://github.com/jblomo/CljPy
+Author: Jim Blomo
+Author-email: jim.blomo@gmail.com
+License: EPL
+Description: Ever started work on a Python project but missed the functional tools that come with Python?  Just import cljpy and the functions you love will be at your fingertips again!
+Keywords: clojure python functional
+Platform: UNKNOWN

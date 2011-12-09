@@ -1,0 +1,9 @@
+setup.cfg
+setup.py
+CljPy.egg-info/PKG-INFO
+CljPy.egg-info/SOURCES.txt
+CljPy.egg-info/dependency_links.txt
+CljPy.egg-info/entry_points.txt
+CljPy.egg-info/top_level.txt
+CljPy.egg-info/zip-safe
+cljpy/__init__.py
