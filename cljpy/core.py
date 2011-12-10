@@ -157,9 +157,33 @@ def assoc(amap, key, value, *kvs):
 	
 	When applied to a vector, returns a new vector that contains val at index.
 	Note: index must be <= (count vector)."""
+	# TODO avoid _copy of amap[key] since we're replacing it anyway
 	ret = _copy(amap)
+	return assoc__(ret, key, value, *kvs)
 
+def assoc__(amap, key, value, *kvs):
+	"""Destructively mutate assoc[iate] new keys to values.
+
+	Returns amap.
+	"""
 	for k,v in [(key, value)] + zip(kvs[::2],kvs[1::2]):
-		ret[k] = v
+		amap[k] = v
 
-	return ret
+	return amap
+
+def assoc_in(m, ks, v):
+	"""Associates a value in a nested associative structure, where ks is a
+	sequence of keys and v is the new value and returns a new nested structure.
+	If any levels do not exist, hash-maps will be created."""
+
+	k, keys = (ks[0], ks[1:])
+
+	#TODO use parrent type for new level?
+	#TODO update with generic get function to support vectors
+	if keys:
+		return assoc(m, k, assoc_in(m.get(k, {}), keys, v))
+	else:
+		return assoc(m, k, v)
+
+
+
