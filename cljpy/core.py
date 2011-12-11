@@ -1,5 +1,7 @@
 """Implements functions in clojure.core"""
 import copy
+from decimal import Decimal
+import operator
 
 # override this method to change the way nondestructive operations copy
 # arguments
@@ -50,11 +52,11 @@ def aget(array, idx, *idxs):
 	
 	Optional idxs arguement will be used to index multidimensional arrays.
 	"""
-	ret = array[idx]
+	result = array[idx]
 	if idxs:
-		return aget(ret, *idxs)
+		return aget(result, *idxs)
 	else:
-		return ret
+		return result
 
 alength = len
 
@@ -118,7 +120,7 @@ def and_(*args):
 
 apply = apply
 
-def areduce(array, idx, ret, init, expr):
+def areduce(array, idx, result, init, expr):
 	"""NOT IMPLEMENTED
 	"""
 	raise NotImplementedError()
@@ -158,8 +160,8 @@ def assoc(amap, key, value, *kvs):
 	When applied to a vector, returns a new vector that contains val at index.
 	Note: index must be <= (count vector)."""
 	# TODO avoid _copy of amap[key] since we're replacing it anyway
-	ret = _copy(amap)
-	return assoc__(ret, key, value, *kvs)
+	result = _copy(amap)
+	return assoc__(result, key, value, *kvs)
 
 def assoc__(amap, key, value, *kvs):
 	"""Destructively mutate assoc[iate] new keys to values.
@@ -185,5 +187,101 @@ def assoc_in(m, ks, v):
 	else:
 		return assoc(m, k, v)
 
+def associative_p(coll):
+	"""Returns true if coll implements."""
+	return hasattr(coll, '__getitem__')
 
+def atom(x, *options):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an atom?
+	"""
+	raise NotImplementedError()
+
+def await(*agents):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an agent?
+	"""
+	raise NotImplementedError()
+
+def await_for(timeout_ms, *agents):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an agent?
+	"""
+	raise NotImplementedError()
+
+def bases(c):
+	"""Returns the immediate superclass and direct interfaces of c, if any"""
+	return c.__bases__
+
+def bean(x):
+	"""NOT IMPLEMENTED
+
+	TODO: no beans
+	"""
+	raise NotImplementedError()
+
+def bigdec(x):
+	"""Coerce to Decimal"""
+	return Decimal(x)
+
+biginteger = bigint = long
+
+def binding(bindings, fn):
+	"""NOT IMPLEMENTED
+
+	TODO: can't figure out how to access caller's or fn's globals
+	globals()?
+	"""
+	raise NotImplementedError()
+
+def bit_and(x, *ys):
+	"""Bitwise and"""
+	return reduce(operator.and_, ys, x)
+
+def bit_and_not(x, *ys):
+	"""Bitwise and with complement"""
+	return reduce(lambda a,b: a & ~b, ys, x)
+
+def bit_clear(x, n):
+	"""Clear bit at index n"""
+	return bit_and_not(x, 1<<n)
+
+def bit_flip(x, n):
+	"""Flip bit at index n"""
+	return x ^ (1<<n)
+
+bit_not = operator.invert
+
+def bit_or(x, *ys):
+	"""Bitwise or"""
+	return reduce(operator.or_, ys, x)
+
+bit_shift_left = operator.lshift
+bit_shift_right = operator.rshift
+
+def bit_test(x, n):
+	"""Test bit at index n"""
+	return bool(x & (1<<n))
+
+def bit_xor(x, *ys):
+	"""Bitwise exclusive or"""
+	return reduce(operator.xor, ys, x)
+
+def merge_with(f, *maps):
+	"""Returns a map that consists of the rest of the maps conj-ed onto the
+	first.  If a key occurs in more than one map, the mapping(s) from the latter
+	(left-to-right) will be combined with the mapping in the result by calling
+	f(result[k], map[k])."""
+
+	result = {}
+	for d in maps:
+		for k in d:
+			if k in result:
+				result[k] = f(result[k], d[k])
+			else:
+				result[k] = _copy(d[k])
+	return result
 
