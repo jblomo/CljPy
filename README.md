@@ -13,16 +13,22 @@ module to avoid destructive updates of arguments.  For iterable return values,
 it tries to return generators, the type of the original function argument, or
 tuples, in that priority.
 
+Still undecided how to handle:
+- Clojure style references
+- macros
+- namespace manipulation
+
 More generally, this is a fun project that is teaching me some of the nooks and
 crannies of the respective languages.
 
 ## Usage
 
+    import operator
     from cljpy import core
     
-    core.assoc({'one': 1}, 'two', 2)
+    merge_with(operator.add, {'one': 1, 'seven': 3}, {'two': 2, 'seven': 4})
     
-    => {'one': 1, 'two': 2}
+    => {'one': 1, 'two': 2, 'seven': 7}
 
 ## Testing
 
