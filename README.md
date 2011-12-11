@@ -14,6 +14,7 @@ it tries to return generators, the type of the original function argument, or
 tuples, in that priority.
 
 Still undecided how to handle:
+
 - Clojure style references
 - macros
 - namespace manipulation
@@ -26,7 +27,7 @@ crannies of the respective languages.
     import operator
     from cljpy import core
     
-    merge_with(operator.add, {'one': 1, 'seven': 3}, {'two': 2, 'seven': 4})
+    core.merge_with(operator.add, {'one': 1, 'seven': 3}, {'two': 2, 'seven': 4})
     
     => {'one': 1, 'two': 2, 'seven': 7}
 
