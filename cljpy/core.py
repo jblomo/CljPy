@@ -1,7 +1,10 @@
 """Implements functions in clojure.core"""
 import copy
-from decimal import Decimal
 import operator
+
+from decimal import Decimal
+from itertools import islice
+from numbers import Integral
 
 # override this method to change the way nondestructive operations copy
 # arguments
@@ -269,6 +272,174 @@ def bit_test(x, n):
 def bit_xor(x, *ys):
 	"""Bitwise exclusive or"""
 	return reduce(operator.xor, ys, x)
+
+boolean = bool
+
+def _type_array(fn, size_or_seq, init_val_or_seq=None):
+	if isinstance(size_or_seq, Integral):
+		try:
+			return map(fn, islice(init_val_or_seq, size_or_seq))
+		except TypeError:
+			return [fn(init_val_or_seq)]*size_or_seq
+	else:
+		try:
+			return map(fn, iter(size_or_seq))
+		except TypeError, e:
+			raise ValueError("fnean_array accepts a size or an iterable: %r" % e)
+
+# TODO use wraps or partial
+def boolean_array(size_or_seq, init_val_or_seq=None):
+	"""Creates an array of booleans
+
+	Either provide:
+	- a size
+	- a size and initial value
+	- a size and sequence
+	- a sequence
+	"""
+	return _type_array(bool, size_or_seq, init_val_or_seq)
+
+def booleans(xs):
+	"""Casts to list of bool"""
+	return boolean_array(xs)
+
+def bound_fn(*fntail):
+	"""NOT IMPLEMENTED
+
+	TODO: macro support
+	"""
+	raise NotImplementedError()
+
+def bound_fn_(f):
+	"""Returns a function, which will install the same bindings in effect as in
+	the thread at the time bound-fn* was called and then call f with any given
+	arguments. This may be used to define a helper function which runs on a
+	different thread, but needs the same bindings in place.
+
+	Note: Python doesn't support threads, so this is currently a noop"""
+	return f
+
+def bound_p(*vars):
+	"""NOT IMPLEMENTED
+
+	TODO: Don't have access to globals() of caller
+	"""
+	raise NotImplementedError()
+
+def butlast(coll):
+	"""Return a generator of all but the last item in coll, in linear time"""
+	icoll = iter(coll)
+
+	try:
+		last = icoll.next()
+	except StopIteration:
+		#TODO return None for empty collections?
+		return
+
+	while(True):
+		try:
+			nextlast = icoll.next()
+		except StopIteration:
+			return
+
+		yield last
+		last = nextlast
+
+def byte(x):
+	"""Coerce to byte"""
+	return bytearray([x])[0]
+
+def byte_array(size_or_seq, init_val_or_seq=None):
+	"""Creates an array of bytes
+
+	Either provide:
+	- a size
+	- a size and initial value
+	- a size and sequence
+	- a sequence
+	"""
+	# custom implementation to use bytearray
+	if isinstance(size_or_seq, Integral):
+		try:
+			return bytearray(int(e) for e in islice(init_val_or_seq, size_or_seq))
+		except TypeError: # init_val_or_seq is not iterable
+			if init_val_or_seq is None:
+				return bytearray(size_or_seq)
+			else:
+				return bytearray([int(init_val_or_seq)]*size_or_seq)
+	else:
+		# size_or_seq is a sequence of something
+		return bytearray(size_or_seq)
+
+bytes_ = bytes
+
+def case(e, *clauses):
+	"""Takes an expression, and a set of clauses.
+
+	Each clause can take the form of either:
+
+	test-constant fn
+
+	(test-constant1, ..., test-constantN)  fn
+
+	If the expression is equal to a test-constant, the corresponding fn() result
+	is returned. A single default fn can follow the clauses, and its result will
+	be returned if no clause matches. If no default expression is provided and
+	no clause matches, a ValueError is thrown.
+	"""
+	for test, fn in zip(clauses[::2], clauses[1::2]):
+		# TODO limit to tuples or avoid lookups in strings?
+		try:
+			if e == test or e in test:
+				return fn()
+		except TypeError:
+			pass
+
+	if len(clauses) % 2:
+		return clauses[-1]()
+
+	raise ValueError("No matching cases")
+
+def cast(c, x):
+	"""Throws a TypeError if x is not a c, else returns x."""
+	if isinstance(x, c):
+		return x
+	else:
+		raise TypeError("%r cannot be cast to %r" % (x, c))
+
+char = unichr
+
+# TODO use wraps or partial
+def char_array(size_or_seq, init_val_or_seq=0):
+	"""Creates an array of chars
+
+	Either provide:
+	- a size
+	- a size and initial value
+	- a size and sequence
+	- a sequence
+	"""
+	return _type_array(unichr, size_or_seq, init_val_or_seq)
+
+def char_escape_string(c):
+	"""Returns escape string for char or None"""
+	return {"\n": r'\n',
+			"\t": r'\t',
+			"\r": r'\r',
+			'"' : r'\"',
+			"\\": r'\\',
+			"\f": r'\f',
+			"\b": r'\b'}.get(c)
+
+def char_name_string(c):
+	"""Returns escape string for char or None"""
+	return {"\n": "newline",
+			"\t": "tab",
+			"\r": "return",
+			"\f": "formfeed",
+			"\b": "backspace"}.get(c)
+
+
 
 def merge_with(f, *maps):
 	"""Returns a map that consists of the rest of the maps conj-ed onto the

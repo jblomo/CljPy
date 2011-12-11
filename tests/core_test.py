@@ -181,6 +181,137 @@ def test_bit_xor():
 	assert bit_xor(all_x, x1, x2) == x3 | x4
 	assert bit_xor(x1, x2, x3, x4) == all_x
 
+def test_boolean_array():
+	size = 5
+	seq = [0,1,2,3,4,5,6]
+	init_val = 1
+
+	limited_f = boolean_array(size)
+	limited_t = boolean_array(size, 1)
+	limited_s = boolean_array(size, seq)
+
+	assert len(limited_f) == size
+	assert len(limited_t) == size
+	assert len(limited_s) == size
+
+	assert not any(limited_f)
+	assert all(limited_t)
+	assert limited_s == [False, True, True, True, True]
+
+	bool_seq = boolean_array(seq)
+	assert len(bool_seq) == len(seq)
+	assert bool_seq == [False, True, True, True, True, True, True]
+
+def test_booleans():
+	seq = [0,1,2,3,4,5,6]
+	bool_seq = boolean_array(seq)
+	assert len(bool_seq) == len(seq)
+	assert bool_seq == [False, True, True, True, True, True, True]
+
+def test_butlast():
+	seq = [0,1,2,3,4,5,6]
+	assert list(butlast(seq)) == seq[:-1]
+	
+	seq = xrange(10)
+	assert list(butlast(seq)) == list(seq)[:-1]
+
+	assert list(butlast(i for i in [1,2,3])) == [1,2]
+
+def test_byte():
+	assert byte(5) == 5
+	assert byte('s') == 115
+
+	with pytest.raises(ValueError):
+		byte(-5)
+	with pytest.raises(ValueError):
+		byte(500)
+
+def test_byte_array():
+	size = 5
+	seq    = [0,1,2,3,4,5,'s']
+	init_val = 1
+
+	limited_f = byte_array(size)
+	limited_t = byte_array(size, 1)
+	limited_s = byte_array(size, seq)
+
+	assert len(limited_f) == size
+	assert len(limited_t) == size
+	assert len(limited_s) == size
+
+	assert not any(limited_f)
+	assert all(limited_t)
+	assert list(limited_s) == seq[:size]
+
+	byte_seq = byte_array(seq)
+	assert len(byte_seq) == len(seq)
+	assert list(byte_seq) == [0,1,2,3,4,5,115]
+
+def test_case():
+	def one():
+		return 1
+
+	def two():
+		return 2
+
+	three = lambda: 3
+
+	default = lambda: 'default'
+
+	for test in [1,2,3]:
+		assert case(test,
+				1, one,
+				2, two,
+				3, three,
+				default) == test
+
+	for test in [1,2,3]:
+		assert case(test,
+				('one', 1), one,
+				2, two,
+				(3, 'three'), three,
+				default) == test
+
+	assert case('string',
+			1, one,
+			2, two,
+			3, three,
+			default) == 'default'
+
+	with pytest.raises(ValueError):
+		case('string',
+				1, one,
+				2, two,
+				3, three)
+
+def test_char_array():
+	size = 5
+	seq = map(ord, "abcdef")
+	init_val = 115
+
+	limited_f = char_array(size)
+	limited_t = char_array(size, 1)
+	limited_s = char_array(size, seq)
+
+	assert len(limited_f) == size
+	assert len(limited_t) == size
+	assert len(limited_s) == size
+
+	assert limited_s == list("abcde")
+
+	char_seq = char_array(seq)
+	assert len(char_seq) == len(seq)
+	assert char_seq == list("abcdef")
+
+def test_char_escape_string():
+	assert char_escape_string("\n") == r'\n'
+	assert char_escape_string("\\") == r'\\'
+	assert char_escape_string("s") == None
+
+def test_char_name_string():
+	assert char_name_string("\n") == "newline"
+	assert char_name_string("\f") == "formfeed"
+	assert char_name_string("s") == None
 
 def test_merge_with():
 	d1 = {'one': 1, 'two': 2, 'seven': 3}
