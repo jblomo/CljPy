@@ -1,6 +1,7 @@
 """Implements functions in clojure.core"""
 import copy
 import operator
+import inspect
 
 from decimal import Decimal
 from itertools import islice
@@ -10,6 +11,7 @@ from numbers import Integral
 # arguments
 _copy = copy.deepcopy
 
+__version__ = "0.0"
 
 def accessor(s, key):
 	"""NOT IMPLEMENTED
@@ -407,11 +409,19 @@ def cast(c, x):
 	else:
 		raise TypeError("%r cannot be cast to %r" % (x, c))
 
-char = unichr
+def char(x):
+	"""Coerce to char"""
+	if char_p(x):
+		return x
+
+	if isinstance(x, Integral):
+		return unichr(x)
+
+	raise ValueError("Can't coerce %r to char" % x)
 
 # TODO use wraps or partial
 def char_array(size_or_seq, init_val_or_seq=0):
-	"""Creates an array of chars
+	"""Creates an array of chars fron integers
 
 	Either provide:
 	- a size
@@ -419,7 +429,7 @@ def char_array(size_or_seq, init_val_or_seq=0):
 	- a size and sequence
 	- a sequence
 	"""
-	return _type_array(unichr, size_or_seq, init_val_or_seq)
+	return _type_array(char, size_or_seq, init_val_or_seq)
 
 def char_escape_string(c):
 	"""Returns escape string for char or None"""
@@ -439,7 +449,77 @@ def char_name_string(c):
 			"\f": "formfeed",
 			"\b": "backspace"}.get(c)
 
+def char_p(c):
+	"""Return true if x is a Character"""
+	try:
+		return bool(ord(c))
+	except TypeError:
+		return False
 
+def chars(xs):
+	"""NOT IMPLEMENTED
+
+	TODO: Not sure how this should varry from char-array given no Python type.
+	"""
+	raise NotImplementedError()
+
+def class_(x):
+	"""Returns the Class of x"""
+	return x.__class__
+
+class_p = inspect.isclass
+
+def clear_agent_errors(a):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an agent?
+	"""
+	raise NotImplementedError()
+
+def clojure_version():
+	"""Returns clojure *API* version as a printable string.
+
+	Includes version of this module."""
+	return "1.3.0 - CljPy %s" % __version__
+
+def coll_p(x):
+	"""Returns true if x implements __len__ and __iter__"""
+	# Key qualities of IPersistentCollection:
+	# - cons TODO
+	# - count __len__
+	# - seq __iter__
+	return hasattr(x, '__len__') and hasattr(x, '__iter__')
+
+def comment(*body, **kwargs):
+	"""Ignores body, returns None"""
+	return None
+
+def commute(ref, fun, *args):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of a ref?
+	"""
+	raise NotImplementedError()
+
+def comp(*fns):
+	"""Takes a set of functions and returns a fn that is the composition of
+	those fns.  The returned fn takes a variable number of args, applies the
+	rightmost of fns to the args, the next fn (right-to-left) to the result,
+	etc.
+	
+	If no functions are provided, returns a tuple of args and kwargs.
+	"""
+	def result(*args, **kwargs):
+		if fns:
+			fnlist = list(reversed(fns))
+			ret = fnlist[0](*args, **kwargs)
+			for fn in fnlist[1:]:
+				ret = fn(ret)
+			return ret
+		else:
+			return (args, kwargs)
+
+	return result
 
 def merge_with(f, *maps):
 	"""Returns a map that consists of the rest of the maps conj-ed onto the

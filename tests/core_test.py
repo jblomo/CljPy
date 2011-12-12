@@ -284,6 +284,17 @@ def test_case():
 				2, two,
 				3, three)
 
+def test_char():
+	assert char('s') == 's'
+	assert char(115) == 's'
+	assert char(True) == u'\x01'
+
+	with pytest.raises(ValueError):
+		char("string")
+
+	with pytest.raises(ValueError):
+		char([1,2,3])
+
 def test_char_array():
 	size = 5
 	seq = map(ord, "abcdef")
@@ -303,6 +314,8 @@ def test_char_array():
 	assert len(char_seq) == len(seq)
 	assert char_seq == list("abcdef")
 
+	assert char_array(c for c in "abcdef") == char_seq
+
 def test_char_escape_string():
 	assert char_escape_string("\n") == r'\n'
 	assert char_escape_string("\\") == r'\\'
@@ -312,6 +325,52 @@ def test_char_name_string():
 	assert char_name_string("\n") == "newline"
 	assert char_name_string("\f") == "formfeed"
 	assert char_name_string("s") == None
+
+def test_char_p():
+	assert map(char_p, [1, 't', 'three', False]) == [False, True, False, False]
+
+def test_class_():
+	assert class_(1) == type(1)
+	assert class_([1,2,3]) == type([])
+	assert class_(class_.__class__) == type
+
+def test_clojure_version():
+	assert clojure_version().startswith("1.3.0")
+
+def test_coll_p():
+	assert coll_p([1,2,3])
+	assert coll_p({'one': 1})
+	assert coll_p(set([]))
+
+	assert coll_p("string") == False
+	assert coll_p(False) == False
+	assert coll_p(1) == False
+
+def test_comment():
+	for item in [1, "string", list]:
+		assert comment(item) == None
+
+	for items in [ [1,2,3], "string"]:
+		assert comment(*items) == None
+
+	assert comment(1, "two", three=3) == None
+
+def test_comp():
+	string = "string"
+	alist = map(ord, string)
+
+	all_chars_fn = comp(all, list)
+	assert all_chars_fn(string) == True
+	assert all_chars_fn(alist) == True
+
+	combine_char = comp(unichr, operator.add)
+	assert combine_char(100, 15) == 's'
+
+	kw_to_set = comp(set, dict)
+	assert kw_to_set(one=1, two=2) == set(['one', 'two'])
+
+	assert comp()(1, 2, three=3) == ((1,2), {'three': 3})
+
 
 def test_merge_with():
 	d1 = {'one': 1, 'two': 2, 'seven': 3}
