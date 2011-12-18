@@ -1,10 +1,12 @@
 """Implements functions in clojure.core"""
 import copy
-import operator
 import inspect
+import itertools
+import operator
 
+from collections import defaultdict
 from decimal import Decimal
-from itertools import islice
+from functools import wraps
 from numbers import Integral
 
 # override this method to change the way nondestructive operations copy
@@ -230,8 +232,12 @@ def bean(x):
 
 def bigdec(x):
 	"""Coerce to Decimal"""
-	return Decimal(x)
+	try:
+		return Decimal(x)
+	except TypeError: # Cannot convert float to Decimal.  First convert the float to a string
+		return Decimal(str(x))
 
+# should be Integer instead?
 biginteger = bigint = long
 
 def binding(bindings, fn):
@@ -280,7 +286,7 @@ boolean = bool
 def _type_array(fn, size_or_seq, init_val_or_seq=None):
 	if isinstance(size_or_seq, Integral):
 		try:
-			return map(fn, islice(init_val_or_seq, size_or_seq))
+			return map(fn, itertools.islice(init_val_or_seq, size_or_seq))
 		except TypeError:
 			return [fn(init_val_or_seq)]*size_or_seq
 	else:
@@ -363,7 +369,7 @@ def byte_array(size_or_seq, init_val_or_seq=None):
 	# custom implementation to use bytearray
 	if isinstance(size_or_seq, Integral):
 		try:
-			return bytearray(int(e) for e in islice(init_val_or_seq, size_or_seq))
+			return bytearray(int(e) for e in itertools.islice(init_val_or_seq, size_or_seq))
 		except TypeError: # init_val_or_seq is not iterable
 			if init_val_or_seq is None:
 				return bytearray(size_or_seq)
@@ -520,6 +526,256 @@ def comp(*fns):
 			return (args, kwargs)
 
 	return result
+
+def comparator(pred):
+	"""NOT IMPLEMENTED
+
+	TODO: Not sure there's an equiv in Python
+	"""
+	raise NotImplementedError()
+
+def compare_and_set__(atom, oldval, newval):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an atom?
+	"""
+	raise NotImplementedError()
+
+def compile(lib):
+	"""NOT IMPLEMENTED
+
+	TODO: perhaps just load the library, which will produce pyc files?
+	"""
+	raise NotImplementedError()
+
+def complement(f):
+	"""Takes a fn f and returns a fn that takes the same arguments as f, has the
+	same effects, if any, and returns the opposite truth value."""
+	#TODO use wraps?
+	return lambda *args, **kwargs: not f(*args, **kwargs)
+
+concat = itertools.chain
+
+def cond(*clauses):
+	"""Takes a set of test/funcion pairs. It evaluates each test function one at
+	a time.  If a test returns logical true, cond evaluates and returns the
+	value of the corresponding expr and doesn't evaluate any of the other tests
+	or exprs.  cond() returns None."""
+	# TODO default case?
+	
+	for test, expr in zip(clauses[::2], clauses[1::2]):
+		if test():
+			return expr()
+
+	return None
+
+def condp(pred, expr, *clauses):
+	""" Takes a binary predicate, an expression, and a set of clauses.  Each
+	clause can take the form of either:
+
+	test-expr result-expr
+
+	test-expr condp.to result-fn
+
+	For each clause, (pred test-expr expr) is evaluated. If it returns logical
+	true, the clause is a match. If a binary clause matches, the result-expr is
+	returned, if a ternary clause matches, its result-fn, which must be a unary
+	function, is called with the result of the predicate as its argument, the
+	result of that call being the return value of condp. A single default
+	expression can follow the clauses, and its value will be returned if no
+	clause matches. If no default expression is provided and no clause matches,
+	an ValueError is thrown."""
+
+	iter_c = iter(clauses)
+	while(iter_c):
+		try:
+			test = next(iter_c)
+		except StopIteration:
+			return ValueError("No matching cases")
+
+		try:
+			to = next(iter_c)
+			if to == condp.to:
+				result = next(iter_c)
+			else:
+				result = to
+		except StopIteration:
+			# test holds the last expression, the default
+			return test
+		
+		p = pred(test, expr)
+		if p:
+			return (result(p) if to == condp.to else result())
+condp.to = ":>>"
+
+def conj(coll, *xs):
+	"""conj[oin]. Returns a new collection with the xs 'added'. (conj nil item)
+	returns (item).  The 'addition' may happen at different 'places' depending
+	on the concrete type."""
+	#TODO multimethod?
+
+	add = _copy(xs)
+
+	if not coll:
+		return add
+
+	# immutible types
+	if isinstance(coll, frozenset):
+		return coll | frozenset(add)
+
+	if isinstance(coll, tuple):
+		return coll + tuple(add)
+
+	# mutable
+	result = _copy(coll)
+
+	return conj__(result, *xs)
+
+def conj__(coll, *xs):
+	"""Adds x to the collection by mutation, and return coll. The 'addition' may
+	happen at different 'places' depending on the concrete type."""
+
+	if isinstance(coll, (dict, set)):
+		coll.update(xs)
+		return coll
+
+	if isinstance(coll, list):
+		coll.extend(xs)
+		return coll
+
+	try:
+		return itertools.chain(coll, xs)
+	except TypeError:
+		raise ValueError("Cannot conj onto %r" % coll)
+
+def cons(x, seq):
+	"""Returns a new iterable where x is the first element and seq is the rest.
+	
+	Note: as in Clojure, if seq is a dict it will iterate over items
+	"""
+	try:
+		return itertools.chain((x,), seq.iteritems())
+	except AttributeError: # not a dict
+		return itertools.chain((x,), seq)
+
+def constantly(x):
+	"""Returns a function that takes any number of arguments and returns x."""
+	return lambda *args,**kwargs: x
+
+def construct_proxy(c, *ctor_args):
+	"""NOT IMPLEMENTED
+
+	TODO: not sure what Clojure version does.
+	"""
+	raise NotImplementedError()
+
+contains_p = operator.contains
+
+def count(coll):
+	"""Returns the number of items in the collection. count(None) returns 0.
+	
+	Note: if necessary, this will iterate through a collection
+	"""
+	try:
+		return len(coll)
+	except TypeError: # has no len()
+		return sum(1 for _ in coll)
+
+def counted_p(coll):
+	"""Returns true if coll implements count in via __len__ function."""
+	return hasattr(coll, '__len__')
+
+def create_ns(sym):
+	"""NOT IMPLEMENTED
+
+	TODO: perhaps creates a module?
+	"""
+	raise NotImplementedError()
+
+def create_struct(*keys):
+	"""NOT IMPLEMENTED
+
+	TODO: maybe a named tuple with a __dict__? These are not recommended in Clojure anyway
+	"""
+	raise NotImplementedError()
+
+cycle = itertools.cycle
+
+def dec(x):
+	"""Returns a number one less than x."""
+	return x-1
+
+def decimal_p(n):
+	"""Returns true if n is a Decimal."""
+	return isinstance(n, Decimal)
+
+def declare(*names):
+	"""NOT IMPLEMENTED
+
+	TODO: change callers globals()
+	"""
+	raise NotImplementedError()
+
+def definline(name, *decl):
+	"""NOT IMPLEMENTED
+
+	TODO: hint to compile to expand function?
+	"""
+	raise NotImplementedError()
+
+def defmacro(name, doc_string, attr_map, *params_body):
+	"""NOT IMPLEMENTED
+
+	probably not going to happen
+	"""
+	raise NotImplementedError()
+
+def defmethod(dispatch_val):
+	"""Creates and installs a new method of multimethod associated with dispatch-value.
+	
+	Note: instead of a Clojure macro, this is a Python decorator.  Use it to
+	decorate the implementation for dispatch_val"""
+
+	def decorator(fn):
+		name = fn.__name__
+		dispatch = defmulti.dispatch.get(name)
+		if dispatch:
+			defmulti.methods[name][dispatch_val] = fn
+		else:
+			raise ValueError("No dispatch function for %s. Must define with defmulti first." % name)
+		return dispatch
+
+	return decorator
+
+def defmulti(**options):
+	"""Decorator creates a new multimethod with the associated dispatch function.
+
+	Options are key-value pairs and may be one of:
+	:default    the default dispatch value, defaults to :default
+	
+	Note: instead of a Clojure macro, this is a Python decorator.  Use it to
+	decorate the dispatch function.
+	"""
+	default = options.get('default')
+
+	def decorator(dispatch_fn):
+		name = dispatch_fn.__name__
+		@wraps(dispatch_fn)
+		def wrapped(*args, **kwargs):
+			lookup = dispatch_fn(*args, **kwargs)
+			method = defmulti.methods[name].get(lookup) or defmulti.methods[name].get(default)
+			if method:
+				return method(*args, **kwargs)
+			else:
+				raise RuntimeError("No method defined for dispatch value %r" % lookup)
+
+		defmulti.dispatch[name] = wrapped
+		return wrapped
+
+	return decorator
+defmulti.methods = defaultdict(dict)
+defmulti.dispatch = {}
+
 
 def merge_with(f, *maps):
 	"""Returns a map that consists of the rest of the maps conj-ed onto the

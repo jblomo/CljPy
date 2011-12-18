@@ -1,5 +1,6 @@
 import pytest
 import operator
+from decimal import Decimal
 
 from cljpy.core import *
 
@@ -104,6 +105,14 @@ def test_associative_p():
 	
 	assert associative_p(1) == False
 	assert associative_p(False) == False
+
+def test_bigdec():
+	for test in [-1.2, ".00000000000000000000000000000000000001", 2.1, 50]:
+		bigd = bigdec(test)
+		assert isinstance(bigd, Decimal)
+		assert bigd != 0
+
+	assert bigdec(0) == 0
 
 def test_bit_and():
 	x1 = 1<<0
@@ -370,6 +379,169 @@ def test_comp():
 	assert kw_to_set(one=1, two=2) == set(['one', 'two'])
 
 	assert comp()(1, 2, three=3) == ((1,2), {'three': 3})
+
+def test_complement():
+	c_all = complement(all)
+	c_any = complement(any)
+
+	assert c_all([False, True]) == True
+	assert c_any([False, True]) == False
+
+	assert complement(lambda: True)() == False
+	assert complement(dict)(one=1) == False
+
+def test_condp():
+	assert condp(operator.eq, 3,
+			1, lambda: "one",
+			2, lambda: "two",
+			3, lambda: "three",
+			"default") == "three"
+
+	assert condp(operator.sub, 3,
+			1, condp.to, operator.abs,
+			2, lambda: "two",
+			3, condp.to, lambda p: "three" if p else "wrong",
+			) == 2
+
+	assert condp(operator.eq, 4,
+			1, lambda: "one",
+			2, lambda: "two",
+			3, condp.to, lambda p: "three" if p else "wrong",
+			"default") == "default"
+
+def test_conj():
+	coll = {'one': 1}
+	add = ('two', 2)
+	conjed = conj(coll, add)
+	assert conjed != coll
+	assert conjed == {'one': 1, 'two': 2}
+
+	coll = [1,2]
+	add = [3,4]
+	conjed = conj(coll, *add)
+	assert conjed != coll
+	assert conjed == [1,2,3,4]
+
+	coll = set([1,2])
+	add = [3,4]
+	conjed = conj(coll, *add)
+	assert conjed != coll
+	assert conjed == set([1,2,3,4])
+
+	coll = frozenset([1,2])
+	add = [3,4]
+	conjed = conj(coll, *add)
+	assert conjed != coll
+	assert conjed == frozenset([1,2,3,4])
+
+	coll = (1,2)
+	add = [3,4]
+	conjed = conj(coll, *add)
+	assert conjed != coll
+	assert conjed == (1,2,3,4)
+
+	coll = xrange(3)
+	add = [3,4]
+	conjed = conj(coll, *add)
+	assert conjed != coll
+	assert list(conjed) == [0,1,2,3,4]
+
+	coll = None
+	add = [3,4]
+	conjed = conj(coll, *add)
+	assert conjed != coll
+	assert conjed == (3,4)
+
+def test_cons():
+	assert list(cons(1, [1,2,3])) == [1,1,2,3]
+	assert list(cons([1,2], [1,2,3])) == [[1,2], 1,2,3]
+
+	assert list(cons('a', "abc")) == "a a b c".split()
+	fromset = list(cons('a', frozenset(['z', 'b', 'c'])))
+	assert fromset[0] == 'a'
+	assert len(fromset) == 4
+
+def test_constantly():
+	truef = constantly(True)
+
+	assert truef()
+	assert truef(False)
+	assert truef(correct=True)
+	assert truef(1,2,3)
+
+def test_count():
+	coll = [1,2,3]
+	for coll_type in [list, set, frozenset, tuple]:
+		assert count(coll_type(coll)) == 3
+
+	assert count(i for i in coll) == 3
+	assert count(xrange(3)) == 3
+
+	assert count(dict(zip(coll,coll))) == 3
+
+	assert count("string") == 6
+
+def test_counted_p():
+	coll = [1,2,3]
+	for coll_type in [list, set, frozenset, tuple]:
+		assert counted_p(coll_type(coll)) == True
+
+	assert counted_p(xrange(3)) == True
+	assert counted_p(dict(zip(coll,coll))) == True
+	assert counted_p("string") == True
+
+	assert counted_p(i for i in coll) == False
+
+def test_decimal_p():
+	assert decimal_p(Decimal(0))
+	assert not decimal_p(0)
+
+	assert decimal_p(Decimal("1.2"))
+	assert not decimal_p(1.2)
+
+def test_defmethod_defmulti_simple():
+	@defmulti()
+	def gt_one(num):
+		"""Multifunction to state if a number is greater than one"""
+		return num > 1
+
+	@defmethod(True)
+	def gt_one(num):
+		"""states yes!"""
+		return "%s greater than" % num
+
+	assert gt_one(2) == "2 greater than"
+
+	with pytest.raises(RuntimeError):
+		gt_one(0)
+
+	@defmethod(False)
+	def gt_one(num):
+		"""states no!"""
+		return "%s less than" % num
+
+	assert gt_one(0) == "0 less than"
+
+def test_defmethod_defmulti_types():
+	@defmulti(default=None)
+	def type_depend(*args):
+		return tuple(map(type, args))
+
+	@defmethod((int, int))
+	def type_depend(a, b):
+		return ("two ints: %s %s" % (a,b))
+
+	@defmethod((str,))
+	def type_depend(s):
+		return ("one string: %s" % s)
+
+	@defmethod(None)
+	def type_depend(*args):
+		return "default"
+
+	assert type_depend(1,2) == "two ints: 1 2"
+	assert type_depend("s") == "one string: s"
+	assert type_depend(True) == "default"
 
 
 def test_merge_with():
