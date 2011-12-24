@@ -9,6 +9,8 @@ from decimal import Decimal
 from functools import wraps
 from numbers import Integral
 
+from lang import Delay, Promise
+
 # override this method to change the way nondestructive operations copy
 # arguments
 _copy = copy.deepcopy
@@ -113,11 +115,18 @@ def amap(array, idx, ref, expr):
 	raise NotImplementedError()
 
 def ancestors(h, tag):
-	"""NOT IMPLEMENTED
+	"""Returns the immediate and indirect parents of tag, either via a Python
+	class inheritance relationship or a relationship established via derive. h
+	must be a hierarchy obtained from make-hierarchy, if not supplied defaults
+	to the global hierarchy."""
 
-	TODO: implement module local hierarchy
-	"""
-	raise NotImplementedError()
+	if tag is None:
+		# shift args over
+		tag = h
+		h = derive.global_ns
+	
+	mro = inspect.getmro(tag) if inspect.isclass(tag) else set()
+	return frozenset(h['ancestors'][tag] | mro)
 
 def and_(*args):
 	"""Return True if all ags are logically true.
@@ -734,7 +743,9 @@ def defmethod(dispatch_val):
 	"""Creates and installs a new method of multimethod associated with dispatch-value.
 	
 	Note: instead of a Clojure macro, this is a Python decorator.  Use it to
-	decorate the implementation for dispatch_val"""
+	decorate the implementation for dispatch_val.
+	
+	TODO: support custom hierarchies."""
 
 	def decorator(fn):
 		name = fn.__name__
@@ -776,6 +787,241 @@ def defmulti(**options):
 defmulti.methods = defaultdict(dict)
 defmulti.dispatch = {}
 
+def defn(name, docstring, attr_map, dispatch_fn, **options):
+	"""NOT IMPLEMENTED
+
+	Probably will not implement: use Python def
+	"""
+	raise NotImplementedError()
+
+def defn_(name, *decls):
+	"""NOT IMPLEMENTED
+
+	Probably will not implement: use Python def and limit exports
+	"""
+	raise NotImplementedError()
+
+def defonce(name, expr):
+	"""NOT IMPLEMENTED
+
+	TODO: namespace manipulation
+	"""
+	raise NotImplementedError()
+
+def defprotocol(name, *args):
+	"""NOT IMPLEMENTED
+
+	TODO: need to think about this
+	"""
+	raise NotImplementedError()
+
+def defrecord(name, fields, *specs, **opts):
+	"""NOT IMPLEMENTED
+
+	TODO: maybe a namedtuple with multimethods?
+	"""
+	raise NotImplementedError()
+
+def defstruct(name, *keys):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of a structmap?
+	see create_structmap
+	"""
+	raise NotImplementedError()
+
+def deftype(name, fields, *specs, **options):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of a type?
+	"""
+	raise NotImplementedError()
+
+def delay(fn, *args, **kwargs):
+	"""Takes a function and arguements to that function, returns a Delay object
+	that will invoke the body only the first time it is forced (with force or
+	deref), and will cache the result and return it on all subsequent force
+	calls. See also - realized_p"""
+
+	return Delay(fn, args, kwargs)
+
+def delay_p(x):
+	"""Returns true if x is a Delay created with delay"""
+	return isinstance(x, Delay)
+
+def force(x):
+	"""If x is a Delay, returns the (possibly cached) value of its expression, else returns x"""
+	if delay_p(x):
+		return x.force()
+	else:
+		return x
+
+def deliver(promise, val):
+	"""Delivers the supplied value to the promise, releasing any pending derefs.
+	A subsequent call to deliver on a promise will throw an exception."""
+
+	return promise.deliver(val)
+
+def deref(ref, *args):
+	"""Within a transaction, returns the in-transaction-value of ref, else
+	returns the most-recently-committed value of ref. When applied to a var,
+	agent or atom, returns its current state. When applied to a delay, forces it
+	if not already forced. When applied to a future, will block if computation
+	not complete. When applied to a promise, will block until a value is
+	delivered.  
+	
+	TODO:
+	Extra args are timeout_ms and timeout_val.  The variant taking a
+	timeout can be used for blocking references (futures and promises), and will
+	return timeout-val if the timeout (in milliseconds) is reached before a
+	value is available. See also - realized_p."""
+
+	return ref.deref(*args)
+
+def promise():
+	"""Returns a promise object that can be read with deref, and set, once only,
+	with deliver. Calls to deref prior to delivery will block, unless the
+	variant of deref with timeout is used. All subsequent derefs will return the
+	same delivered value without blocking. See also - realized_p."""
+
+	return Promise()
+
+def make_hierarchy():
+	"""Creates a hierarchy object for use with derive, isa? etc."""
+	# consider using frozenset
+	return {'parents': defaultdict(set),
+			'ancestors': defaultdict(set),
+			'descendants': defaultdict(set)}
+
+def derive(h, tag, parent=None):
+	"""Establishes a parent/child relationship between parent and tag. Parent
+	and tag must be hashable objects.  h must be a hierarchy obtained from
+	make-hierarchy, if not supplied defaults to, and modifies, the global
+	hierarchy.
+
+	The two ways to call this function are:
+	derive(tag, parent)
+	derive(h, tag, parent)
+	"""
+
+	if parent is None:
+		# shift everything over
+		parent = tag
+		tag = h
+		h = derive.global_ns
+	else:
+		h = _copy(h)
+
+	tp = h['parents']
+	td = h['descendants']
+	ta = h['ancestors']
+
+	if parent in ta[tag]:
+		raise ValueError("%r already has %r as ancestor" % (tag, parent))
+	if tag in ta[parent]:
+		raise ValueError("Cyclic derivation: %r has %r as ancestor" % (parent, tag))
+
+	tp[tag].add(parent)
+	td[parent].update(td[tag] | set([tag]))
+	ta[tag].update(ta[parent] | set([parent]))
+
+	for anc in ta[parent]:
+		td[anc].add(tag)
+
+	for desc in td[tag]:
+		ta[desc].add(parent)
+
+	return h
+derive.global_ns = make_hierarchy()
+
+def descendants(h, tag=None):
+	"""Returns the immediate and indirect children of tag, through a
+	relationship established via derive. h must be a hierarchy obtained from
+	make-hierarchy, if not supplied defaults to the global hierarchy.
+	
+	The two ways of calling this function are:
+	descendants(tag)
+	descendants(h, tag)
+	"""
+
+	if tag is None:
+		# shift args over
+		tag = h
+		h = derive.global_ns
+	
+	return frozenset(h['descendants'][tag])
+
+def disj(coll, *ks):
+	"""disj[oin]. Returns a new set of the same (hashed/sorted) type, that does
+	not contain key(s)."""
+	# should work with tuples?
+	return coll - frozenset(ks)
+
+def disj__(coll, *ks):
+	"""Destructively disj[oin]. Returns coll with ks removed."""
+	for key in ks:
+		coll.discard(key)
+	return coll
+
+def dissoc(d, *ks):
+	"""dissoc[iate]. Returns a new map of the same (hashed/sorted) type, that
+	does not contain a mapping for key(s)."""
+
+	keep = set(d.keys()) - set(ks)
+	return dict(zip(keep, [d[k] for k in keep]))
+
+def distinct(coll):
+	"""Returns a generator of the elements of coll with duplicates removed"""
+	seen = set()
+	for e in coll:
+		if e not in seen:
+			yield e
+			seen.add(e)
+
+def distinct_p(*args):
+	"""Returns true if no two of the arguments are =="""
+	for i, e in enumerate(args):
+		if e in args[i+1:]:
+			return False
+	return True
+
+
+def parents(h, tag=None):
+	"""Returns the immediate parents of tag, either via a Java type inheritance
+	relationship or a relationship established via derive. h must be a hierarchy
+	obtained from make-hierarchy, if not supplied defaults to the global
+	hierarchy."""
+
+	if tag is None:
+		# shift args over
+		tag = h
+		h = derive.global_ns
+	
+	mro = tag.__bases__ if hasattr(tag, '__bases__') else set()
+	return frozenset(h['parents'][tag] | mro)
+
+def partition(n, coll, step=None, pad=None):
+	"""Returns a generator of lists of n items each, at offsets step apart.
+	If step is not supplied, defaults to n, i.e. the partitions do not overlap.
+	If a pad collection is supplied, use its elements as necessary to complete
+	last partition upto n items. In case there are not enough padding elements,
+	return a partition with less than n items.
+
+	Note: positional arguments differ from Clojure"""
+	step = step or n
+	seq = iter(coll)
+	result = ()
+
+	while True:
+		part = tuple(itertools.islice(seq, step))
+		result += part
+		if len(result) >= n:
+			yield result[:n]
+			result = result[step:]
+		elif len(part) < step:
+			if pad:
+				yield result + tuple(itertools.islice(pad, n-len(result)))
+			return
 
 def merge_with(f, *maps):
 	"""Returns a map that consists of the rest of the maps conj-ed onto the

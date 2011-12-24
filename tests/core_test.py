@@ -1,8 +1,10 @@
 import pytest
 import operator
 from decimal import Decimal
+from datetime import datetime
 
 from cljpy.core import *
+from lang import Promise
 
 def test_aget():
 	single = [1,2,3]
@@ -56,6 +58,19 @@ def test_assoc():
 	assert vector != modified 
 	assert modified[2] == 42
 	assert modified[0] == 42
+
+def test_ancestors():
+	h = make_hierarchy()
+
+	h = derive(h, 'daughter', 'parent')
+	h = derive(h, 'parent', 'grandparent')
+	h = derive(h, 'son', 'parent')
+
+	assert 'grandparent' in ancestors(h, 'son')
+	assert 'grandparent' in ancestors(h, 'daughter')
+	
+	assert 'parent' in ancestors(h, 'son')
+	assert 'parent' in ancestors(h, 'daughter')
 
 def test_assoc_in_single():
 	amap = {'one': 1, 'two': 2, 'three': 3}
@@ -543,6 +558,149 @@ def test_defmethod_defmulti_types():
 	assert type_depend("s") == "one string: s"
 	assert type_depend(True) == "default"
 
+def test_delay_force():
+	def microsecond_n(n):
+		return (datetime.now().microsecond, n)
+
+	delayed = delay(microsecond_n, 5)
+
+	assert delay_p(delayed)
+
+	(micro, n) = force(delayed)
+
+	assert n == 5
+	
+	for _ in xrange(4):
+		# ensure that all calls to force return the same value
+		assert (micro, n) == force(delayed)
+
+def test_derive():
+	# also see tests for ancestors, parents, descendants
+	h = make_hierarchy()
+
+	h = derive(h, 'daughter', 'parent')
+	h = derive(h, 'parent', 'grandparent')
+	h = derive(h, 'son', 'parent')
+
+	assert derive('global-daughter', 'global-parent')
+	assert derive('global-parent', 'global-grandparent')
+	assert derive('global-son', 'global-parent')
+
+	with pytest.raises(ValueError): # Cyclic
+		derive(h, 'grandparent', 'daughter')
+		derive('global-grandparent', 'global-daughter')
+
+	with pytest.raises(ValueError): # already has ancestor
+		derive(h, 'daughter', 'grandparent')
+		derive('global-daughter', 'global-grandparent')
+
+def test_descendants():
+	h = make_hierarchy()
+
+	h = derive(h, 'daughter', 'parent')
+	h = derive(h, 'parent', 'grandparent')
+	h = derive(h, 'son', 'parent')
+
+	assert descendants(h, 'daughter') == frozenset([])
+	assert descendants(h, 'son') == frozenset([])
+	assert descendants(h, 'parent') == frozenset(['daughter', 'son'])
+	assert descendants(h, 'grandparent') == frozenset(['parent', 'daughter', 'son'])
+
+def test_disj():
+	coll = set([1,2,3,4])
+
+	assert disj(coll, 1) == set([2,3,4])
+	assert disj(coll, 1, 2) == set([3,4])
+	assert disj(coll, 1, 2, 11, 12) == set([3,4])
+
+	coll = frozenset([1,2,3,4])
+	assert disj(coll, 4) == frozenset([1,2,3])
+	assert disj(coll, 4, 3, -4, -3) == frozenset([1,2])
+
+def test_disj__():
+	coll = set([1,2,3,4])
+
+	disj__(coll, 1)
+	assert coll == set([2,3,4])
+	
+	disj__(coll, 2, 3)
+	assert coll == set([4])
+
+	disj__(coll, 2, 3)
+	assert coll == set([4])
+
+	disj__(coll, 4)
+	assert coll == set([])
+
+def test_distinct():
+	coll = [1,1,2,2,3,3,4,4,5,5]
+	concat = coll + coll
+	dist = [1,2,3,4,5]
+
+	assert list(distinct(coll)) == dist
+	assert list(distinct(concat)) == dist
+	assert list(distinct(dist)) == dist
+	assert list(distinct(xrange(1,6))) == dist
+
+def test_distinct_p():
+	assert distinct_p(1,2,3)
+	assert distinct_p(*xrange(5))
+
+	assert not distinct_p(1,2,3,2)
+	assert not distinct_p(*([1,2,3] + [1,2,3]))
+
+def test_partition():
+	string = "hello world"
+	tries = [
+			dict(n=1),
+			dict(n=1, step=2),
+			dict(n=3),
+			dict(n=3, step=1),
+			dict(n=3, step=1, pad='!!')]
+	results = [
+			[tuple(c) for c in string],
+			[tuple(c) for c in string[::2]],
+			[('h', 'e', 'l'), ('l', 'o', ' '), ('w', 'o', 'r')],
+			[('h', 'e', 'l'),
+				('e', 'l', 'l'),
+				('l', 'l', 'o'),
+				('l', 'o', ' '),
+				('o', ' ', 'w'),
+				(' ', 'w', 'o'),
+				('w', 'o', 'r'),
+				('o', 'r', 'l'),
+				('r', 'l', 'd')],
+			[('h', 'e', 'l'),
+				('e', 'l', 'l'),
+				('l', 'l', 'o'),
+				('l', 'o', ' '),
+				('o', ' ', 'w'),
+				(' ', 'w', 'o'),
+				('w', 'o', 'r'),
+				('o', 'r', 'l'),
+				('r', 'l', 'd'),
+				('l', 'd', '!')]]
+
+	for kwargs, result in zip(tries, results):
+		assert list(partition(coll=string, **kwargs)) == result
+
+
+def test_promise_deliver_simple():
+	p = promise()
+
+	assert isinstance(p, Promise)
+
+	deliver(p, 1)
+
+	assert deref(p) == 1
+
+	with pytest.raises(RuntimeError):
+		deliver(p, 0)
+
+
+def test_promise_deliver_blocking():
+	#TODO
+	pass
 
 def test_merge_with():
 	d1 = {'one': 1, 'two': 2, 'seven': 3}

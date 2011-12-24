@@ -11,12 +11,12 @@ idiomatic differences between the languages arise, side with Clojure.  The most
 prominent example is immutable types.  This module will use the Python copy
 module to avoid destructive updates of arguments.  For iterable return values,
 it tries to return generators, the type of the original function argument, or
-tuples, in that priority.
+tuples, in that priority.  Macros are implemented either as higher order
+functions (eg. condp) or decorators (eg. defmulti/defmethod).
 
 Still undecided how to handle:
 
 - Clojure style references
-- macros
 - namespace manipulation
 
 More generally, this is a fun project that is teaching me some of the nooks and
