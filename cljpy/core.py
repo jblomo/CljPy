@@ -3,6 +3,7 @@ import copy
 import inspect
 import itertools
 import operator
+from array import array
 
 from collections import defaultdict
 from decimal import Decimal
@@ -292,20 +293,24 @@ def bit_xor(x, *ys):
 
 boolean = bool
 
-def _type_array(fn, size_or_seq, init_val_or_seq=None):
+def _type_array(type_code, size_or_seq, init_val_or_seq=None):
 	if isinstance(size_or_seq, Integral):
 		try:
-			return map(fn, itertools.islice(init_val_or_seq, size_or_seq))
+			if not (isinstance(init_val_or_seq, basestring) and len(init_val_or_seq) == 1):
+				# protect against the case of a single character serving as the
+				# initial value
+				return array(type_code, itertools.islice(init_val_or_seq, size_or_seq))
 		except TypeError:
-			return [fn(init_val_or_seq)]*size_or_seq
+			pass
+
+		return array(type_code, [init_val_or_seq]*size_or_seq)
 	else:
 		try:
-			return map(fn, iter(size_or_seq))
+			return array(type_code, size_or_seq)
 		except TypeError, e:
 			raise ValueError("fnean_array accepts a size or an iterable: %r" % e)
 
-# TODO use wraps or partial
-def boolean_array(size_or_seq, init_val_or_seq=None):
+def boolean_array(size_or_seq, init_val_or_seq=False):
 	"""Creates an array of booleans
 
 	Either provide:
@@ -314,11 +319,16 @@ def boolean_array(size_or_seq, init_val_or_seq=None):
 	- a size and sequence
 	- a sequence
 	"""
-	return _type_array(bool, size_or_seq, init_val_or_seq)
+	# TODO use bitarray or similar
+	# 'B' is unsigned integer.  There is no 1 bit array
+	return _type_array('B', size_or_seq, init_val_or_seq)
 
 def booleans(xs):
-	"""Casts to list of bool"""
-	return boolean_array(xs)
+	"""NOT IMPLEMENTED
+
+	TODO: can Python cast without copy?
+	"""
+	raise NotImplementedError()
 
 def bound_fn(*fntail):
 	"""NOT IMPLEMENTED
@@ -434,9 +444,8 @@ def char(x):
 
 	raise ValueError("Can't coerce %r to char" % x)
 
-# TODO use wraps or partial
-def char_array(size_or_seq, init_val_or_seq=0):
-	"""Creates an array of chars fron integers
+def char_array(size_or_seq, init_val_or_seq='\x00'):
+	"""Creates an array of chars from integers
 
 	Either provide:
 	- a size
@@ -444,7 +453,7 @@ def char_array(size_or_seq, init_val_or_seq=0):
 	- a size and sequence
 	- a sequence
 	"""
-	return _type_array(char, size_or_seq, init_val_or_seq)
+	return _type_array('c', size_or_seq, init_val_or_seq)
 
 def char_escape_string(c):
 	"""Returns escape string for char or None"""
@@ -984,6 +993,254 @@ def distinct_p(*args):
 		if e in args[i+1:]:
 			return False
 	return True
+
+def doall(coll, n=None):
+	"""When generators are produced via functions that have side effects, any
+	effects other than those needed to produce the first element in the seq do
+	not occur until the generator is consumed. doall can be used to force any
+	effects.  Walks through the successive nexts of the seq, retains the head
+	and returns it, thus causing the entire seq to reside in memory at one time.
+	
+	Note: returns a list backed iterator of size n (or all) chained to the rest
+	of the collection.  Argument order is reversed from Clojure.
+	"""
+
+	seq = iter(coll)
+	if n:
+		realized = list(itertools.islice(seq, n))
+	else:
+		realized = list(seq)
+
+	return itertools.chain(realized, seq)
+
+def dorun(coll, n=None):
+	"""When generators are produced via functions that have side effects, any
+	effects other than those needed to produce the first element in the seq do
+	not occur until the generator is consumed. dorun can be used to force any
+	effects.  Walks through the successive nexts of the seq, does not retain the
+	head and returns None.
+	
+	Note: Arguement order is reversed from Clojure."""
+
+	seq = iter(coll)
+	try:
+		if n:
+			while n != 0:
+				next(seq)
+				n -= 1
+		else: # consume all
+			while True:
+				next(seq)
+	except StopIteration:
+		pass
+
+def doseq(seq_exprs, body):
+	"""Repeatedly executes body (presumably for side-effects) with bindings as
+	provided by seq_exprs.  seq_exprs is an iterable of iterables or dicts which
+	are used as the arguements to the body function.  Does not retain the head
+	of the sequence.  Returns None."""
+
+	for args in seq_exprs:
+		if isinstance(args, dict):
+			body(**args)
+		else:
+			body(*args)
+
+def dosync(*exprs):
+	"""NOT IMPLEMENTED
+
+	TODO: STM
+	"""
+	raise NotImplementedError()
+
+def dotimes(name, n, body):
+	"""Repeatedly executes body (presumably for side-effects) with argument
+	name, bound to integers from 0 through n-1.
+	
+	Note: arguements provided separately instead of binding form
+	"""
+
+	kwargs = {}
+	assert n >= 0
+
+	for c in xrange(n):
+		kwargs[name] = c
+		body(**kwargs)
+
+def doto(x, *forms):
+	"""NOT IMPLEMENTED
+
+	TODO: can't think of a useful way to do this
+	"""
+	raise NotImplementedError()
+
+def double(x):
+	"""Coerce to double"""
+	# TODO check Decimal, numbers modules
+	return float(x)
+
+def double_array(size_or_seq, init_val_or_seq=0.0):
+	"""Creates an array of doubles from integers
+
+	Either provide:
+	- a size
+	- a size and initial value
+	- a size and sequence
+	- a sequence
+	"""
+	return _type_array('d', size_or_seq, init_val_or_seq)
+
+def doubles(xs):
+	"""NOT IMPLEMENTED
+
+	TODO: casting without copying
+	"""
+	raise NotImplementedError()
+
+def drop(n, coll):
+	"""Returns a generator of all but the first n items in coll."""
+	for e in coll:
+		if n > 0:
+			n -= 1
+		else:
+			yield e
+
+def drop_last(n=1, coll=None):
+	"""Return a lazy sequence of all but the last n (default 1) items in coll."""
+
+	buf = []
+	seq = iter(coll)
+
+	while n > 0:
+		buf.append(next(seq))
+		n -= 1
+
+	for e in seq:
+		# TODO linear time? use queue
+		yield buf.pop(0)
+		buf.append(e)
+
+drop_while = itertools.dropwhile
+
+def empty(coll):
+	"""Returns an empty collection of the same category as coll, or None"""
+	try:
+		if coll_p(coll):
+			return type(coll)()
+	except TypeError: # cannot create instances
+		pass
+
+	return None
+
+def empty_p(coll):
+	"""Returns true if coll has no items.
+	
+	Note: will consume one item if necessary.
+	"""
+	for e in coll:
+		return False
+
+	return True
+
+def ensure(ref):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of a ref?
+	"""
+	raise NotImplementedError()
+
+def enumeration_seq(e):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of a java.util.Enumeration?
+	"""
+	raise NotImplementedError()
+
+def error_handler(a):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an agent?
+	"""
+	raise NotImplementedError()
+
+def error_mode(a):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of an agent?
+	"""
+	raise NotImplementedError()
+
+def eval(form):
+	"""Evaluates the form data structure (not text!) and returns the result.
+
+	Note: Clojure forms are approximated by passing in a tuple, first element is
+	a function, the remainder are arguements."""
+	return form[0](*form[1:])
+
+def even_p(n):
+	"""Returns true if n is even, throws an exception if n is not an integer"""
+	return not (n & 1)
+
+def every_pred(*preds):
+	"""Takes a set of predicates and returns a function f that returns true if
+	all of its composing predicates return a logical true value against all of
+	its arguments, else it returns false. Note that f is short-circuiting in
+	that it will stop execution on the first argument that triggers a logical
+	false result against the original predicates."""
+
+	return lambda *args: all(pred(a) for pred in preds for a in args)
+
+def every_p(pred, coll):
+	"""Returns true if (pred x) is logical true for every x in coll, else
+	false."""
+
+	return all(pred(c) for c in coll)
+
+def extend(atype, *proto_mmaps):
+	"""NOT IMPLEMENTED
+
+	TODO: Protocols
+	"""
+	raise NotImplementedError()
+
+def extend_protocol(p, *specs):
+	"""NOT IMPLEMENTED
+
+	TODO: protocols
+	"""
+	raise NotImplementedError()
+
+def extend_type(t, *spects):
+	"""NOT IMPLEMENTED
+
+	TODO: deftype
+	"""
+	raise NotImplementedError()
+
+def extenders(protocol):
+	"""NOT IMPLEMENTED
+
+	TODO: protocols
+	"""
+	raise NotImplementedError()
+
+def extends_p(protocol, atype):
+	"""NOT IMPLEMENTED
+
+	TODO: protocols
+	"""
+	raise NotImplementedError()
+
+def false_p(x):
+	"""Returns true if x is the value False, False otherwise.
+	
+	Note: In Python bool is a subclass of int, so 0 always == False"""
+	return False == x
+
+def ffirst(x):
+	"""Same as first(first(x))"""
+	return first(first(x))
+
 
 
 def parents(h, tag=None):

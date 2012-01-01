@@ -2,6 +2,7 @@ import pytest
 import operator
 from decimal import Decimal
 from datetime import datetime
+from itertools import islice
 
 from cljpy.core import *
 from lang import Promise
@@ -207,11 +208,11 @@ def test_bit_xor():
 
 def test_boolean_array():
 	size = 5
-	seq = [0,1,2,3,4,5,6]
-	init_val = 1
+	seq = [False, True, True, True, True, True]
+	init_val = True
 
 	limited_f = boolean_array(size)
-	limited_t = boolean_array(size, 1)
+	limited_t = boolean_array(size, init_val)
 	limited_s = boolean_array(size, seq)
 
 	assert len(limited_f) == size
@@ -220,17 +221,11 @@ def test_boolean_array():
 
 	assert not any(limited_f)
 	assert all(limited_t)
-	assert limited_s == [False, True, True, True, True]
+	assert map(bool, limited_s) == [False, True, True, True, True]
 
 	bool_seq = boolean_array(seq)
 	assert len(bool_seq) == len(seq)
-	assert bool_seq == [False, True, True, True, True, True, True]
-
-def test_booleans():
-	seq = [0,1,2,3,4,5,6]
-	bool_seq = boolean_array(seq)
-	assert len(bool_seq) == len(seq)
-	assert bool_seq == [False, True, True, True, True, True, True]
+	assert map(bool, bool_seq) == [False, True, True, True, True, True]
 
 def test_butlast():
 	seq = [0,1,2,3,4,5,6]
@@ -321,22 +316,22 @@ def test_char():
 
 def test_char_array():
 	size = 5
-	seq = map(ord, "abcdef")
-	init_val = 115
+	seq = "abcdef"
+	init_val = 's'
 
 	limited_f = char_array(size)
-	limited_t = char_array(size, 1)
+	limited_t = char_array(size, init_val)
 	limited_s = char_array(size, seq)
 
 	assert len(limited_f) == size
 	assert len(limited_t) == size
 	assert len(limited_s) == size
 
-	assert limited_s == list("abcde")
+	assert list(limited_s) == list("abcde")
 
 	char_seq = char_array(seq)
 	assert len(char_seq) == len(seq)
-	assert char_seq == list("abcdef")
+	assert list(char_seq) == list("abcdef")
 
 	assert char_array(c for c in "abcdef") == char_seq
 
@@ -648,6 +643,176 @@ def test_distinct_p():
 
 	assert not distinct_p(1,2,3,2)
 	assert not distinct_p(*([1,2,3] + [1,2,3]))
+
+def test_doall():
+	def inc_times_run():
+		max_runs = 100
+		while max_runs:
+			max_runs -= 1
+			inc_times_run.count += 1
+			yield inc_times_run.count
+	inc_times_run.count = 0
+	
+	realize10 = doall(inc_times_run(), 10)
+
+	assert inc_times_run.count == 10
+	assert list(islice(realize10, 10)) == range(1, 11)
+	assert inc_times_run.count == 10
+
+	inc_times_run.count = 0
+	realize_all = doall(inc_times_run())
+	assert inc_times_run.count == 100
+	assert list(realize_all) == range(1, 101)
+	assert inc_times_run.count == 100
+
+def test_dorun():
+	def inc_times_run():
+		max_runs = 100
+		while max_runs:
+			max_runs -= 1
+			inc_times_run.count += 1
+			yield inc_times_run.count
+	inc_times_run.count = 0
+	
+	assert dorun(inc_times_run(), 10) == None
+	assert inc_times_run.count == 10
+
+	inc_times_run.count = 0
+	assert dorun(inc_times_run()) == None
+	assert inc_times_run.count == 100
+
+def test_doseq():
+	def running(inc=0, dec=0):
+		running.total = running.total + inc - dec
+		return running.total
+	running.total = 0
+
+	assert doseq(((2, 1) for _ in xrange(10)), running) == None
+	assert running.total == 10
+
+	running.total = 0
+	assert doseq((dict(dec=1, inc=3) for _ in xrange(10)), running) == None
+	assert running.total == 20
+
+def test_dotimes():
+	def running(inc=0, dec=0):
+		running.total = running.total + inc - dec
+		return running.total
+	running.total = 0
+
+	assert dotimes('inc', 10, running) == None
+	assert running.total == 45
+
+	running.total = 0
+	assert dotimes('dec', 10, running) == None
+	assert running.total == -45
+
+def test_double_array():
+	size = 5
+	devisor = float(3)
+	seq = map(lambda i: i/devisor, [1,2,3,4,5,6])
+	init_val = 1.0
+
+	limited_f = double_array(size)
+	limited_t = double_array(size, init_val)
+	limited_s = double_array(size, seq)
+
+	assert len(limited_f) == size
+	assert len(limited_t) == size
+	assert len(limited_s) == size
+
+	assert list(limited_s) == seq[:5]
+
+	double_seq = double_array(seq)
+	assert len(double_seq) == len(seq)
+	assert list(double_seq) == seq
+
+	assert double_array(i/devisor for i in [1,2,3,4,5,6]) == double_seq
+
+def test_drop():
+	correct = [3,4,5]
+
+	assert list(drop(2, [1,2,3,4,5])) == correct
+	assert list(drop(2, xrange(1,6))) == correct
+	assert list(drop(2, (i for i in [1,2,3,4,5]))) == correct
+	assert len(list(drop(2, set([1,2,3,4,5])))) == 3
+
+def test_drop_last():
+	correct = [1,2,3]
+
+	assert list(drop_last(2, [1,2,3,4,5])) == correct
+	assert list(drop_last(2, xrange(1,6))) == correct
+	assert list(drop_last(2, (i for i in [1,2,3,4,5]))) == correct
+	assert len(list(drop_last(2, set([1,2,3,4,5])))) == 3
+
+	assert list(drop_last(coll=[1,2,3])) == [1,2]
+
+def test_empty():
+	tests = [set([1, 2, 3]),
+			frozenset([1, 2, 3]),
+			{'one': 1, 'two': 2},
+			[1,2,3]]
+
+	for t in tests:
+		emp = empty(t)
+		assert type(emp) == type(t)
+		assert len(emp) == 0
+
+	none_tests = [(i for i in [1,2,3]),
+			1,
+			1.0,
+			"string",
+			xrange(5)]
+
+	for t in none_tests:
+		assert empty(t) == None
+
+def test_empty_p():
+	tests = [{}, [], set(), frozenset(), (i for i in [])]
+
+	for t in tests:
+		assert empty_p(t)
+
+	tests_full = [{'one': 1}, [1,2], set([1,2,3]), frozenset([1]), (i for i in [1,2])]
+	for t in tests_full:
+		assert empty_p(t) == False
+
+def test_eval():
+	form = (int,)
+	assert eval(form) == 0
+
+	form = (max, 1,-1,0)
+	assert eval(form) == 1
+
+	form = (sum, [1, 2, 3], 0)
+	assert eval(form) == 6
+
+def test_even_p():
+	for even, odd in zip(xrange(0, 10, 2), xrange(1,10,2)):
+		assert even_p(even)
+		assert not even_p(odd)
+
+	with pytest.raises(TypeError): # unsupported operand type for &
+		assert even_p("string")
+
+def test_every_pred():
+	assert every_pred(int)(1)
+
+	non_empty = every_pred(len, bool, unicode)
+	assert non_empty("string", "not", "empty")
+	assert not non_empty("string", "", "empty")
+
+def test_every_p():
+	assert every_p(int, [1])
+
+	assert every_p(len, ["string", "not", "empty"])
+	assert not every_p(len, ["string", "", "empty"])
+
+def test_false_p():
+	assert false_p(False)
+
+	for t in ["", [], "string", 4, set([7])]:
+		assert not false_p(t)
 
 def test_partition():
 	string = "hello world"
