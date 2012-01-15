@@ -814,6 +814,81 @@ def test_false_p():
 	for t in ["", [], "string", 4, set([7])]:
 		assert not false_p(t)
 
+def test_ffirst():
+	ctors = [list, tuple, iter]
+	tests = [
+			[0,1,2],
+			(0,1,2),
+			set([0]),
+			xrange(3),]
+	for t in tests:
+		for ctor in ctors:
+			assert ffirst(ctor([t])) == 0
+
+	tests = [
+			[],
+			(),
+			set(),
+			xrange(0),
+			None]
+	for t in tests:
+		for ctor in ctors:
+			assert ffirst(ctor([t])) == None
+
+	tests = [
+			[],
+			(),
+			set(),
+			xrange(0),
+			None]
+	for t in tests:
+		assert ffirst(t) == None
+
+
+def test_file_seq():
+	assert "cljpy/core.py" in file_seq("cljpy")
+
+	assert "tests/file_seq/subdir" in file_seq("tests")
+	assert "tests/file_seq/subdir/file_seq.empty" in file_seq("tests")
+
+def test_find():
+	myd = {'one': 1, 'two': 2}
+
+	for kv in myd.iteritems():
+		assert find(myd, kv[0]) == kv
+	
+	assert find(myd, 'none') == None
+
+def test_first():
+	tests = [
+			[0,1,2],
+			(0,1,2),
+			set([0]),
+			xrange(3),
+			(i for i in [0,1,2])]
+	for t in tests:
+		assert first(t) == 0
+
+	tests = [
+			[],
+			(),
+			set(),
+			xrange(0),
+			None]
+	for t in tests:
+		assert first(t) == None
+
+def test_flatten():
+    tests = [
+            [1,2,3],
+            [[[1]],[2],3],
+            [1,(2,3)],
+            [xrange(1,3),3]]
+    for t in tests:
+        assert list(flatten(t)) == [1,2,3]
+
+    assert list(flatten(None)) == []
+
 def test_partition():
 	string = "hello world"
 	tries = [

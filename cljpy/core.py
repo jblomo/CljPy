@@ -1,8 +1,12 @@
-"""Implements functions in clojure.core"""
+"""Implements functions in clojure.core
+
+vi:noexpandtab
+"""
 import copy
 import inspect
 import itertools
 import operator
+import os
 from array import array
 
 from collections import defaultdict
@@ -1241,7 +1245,73 @@ def ffirst(x):
 	"""Same as first(first(x))"""
 	return first(first(x))
 
+def file_seq(dir):
+	"""A generator of all paths under dir"""
+	for dirpath, dirnames, filenames in os.walk(dir):
+		for p in dirnames+filenames:
+			yield os.path.join(dirpath, p)
 
+filter = itertools.ifilter
+
+def find(map, key):
+	"""Returns the map entry for key, or nil if key not present."""
+	try:
+		return (key, map[key])
+	except KeyError:
+		return None
+
+def find_keyword(ns, name):
+	"""NOT IMPLEMENTED
+
+	TODO: what is the equivilant of a keyword that is only instantiated once?
+	"""
+	raise NotImplementedError()
+
+def find_ns(sym):
+	"""NOT IMPLEMENTED
+
+	TODO: maybe dir() or vars()?
+	"""
+	raise NotImplementedError()
+
+def find_var(sym):
+	"""NOT IMPLEMENTED
+
+	TODO: Could do something like
+		return globals().get(sym)
+	but returned is a value, not a var.
+	"""
+	raise NotImplementedError()
+
+def first(coll):
+	"""Returns the first item in the collection. If
+	coll is None, returns None."""
+	if coll:
+		for f in coll:
+			return f
+
+	return None
+
+def flatten(x):
+	"""Takes any nested combination of sequential things (lists, vectors, etc.)
+	and generates their contents as a single, flat sequence.  flatten(None)
+	returns an empty sequence."""
+	
+	if x is None:
+		return
+
+	if iter_p(x):
+		for i in concat(*(flatten(e) for e in x)):
+			yield i
+	else:
+		yield x
+
+def iter_p(x):
+	"""Return if x is iterable, except strings"""
+	try: iter(x)
+	except TypeError: return False
+
+	return True
 
 def parents(h, tag=None):
 	"""Returns the immediate parents of tag, either via a Java type inheritance
