@@ -1,6 +1,4 @@
 """Implements functions in clojure.core
-
-vi:noexpandtab
 """
 import copy
 import inspect
@@ -8,6 +6,7 @@ import itertools
 import operator
 import os
 from array import array
+from sys import stdout
 
 from collections import defaultdict
 from decimal import Decimal
@@ -402,7 +401,7 @@ def byte_array(size_or_seq, init_val_or_seq=None):
 		# size_or_seq is a sequence of something
 		return bytearray(size_or_seq)
 
-bytes_ = bytes
+bytes = bytes
 
 def case(e, *clauses):
 	"""Takes an expression, and a set of clauses.
@@ -1306,12 +1305,74 @@ def flatten(x):
 	else:
 		yield x
 
+float = float
+
+def float_array(size_or_seq, init_val_or_seq=False):
+	"""
+	Either provide:
+	- a size
+	- a size and initial value
+	- a size and sequence
+	- a sequence
+	"""
+	return _type_array('f', size_or_seq, init_val_or_seq)
+
+def float_p(n):
+	"""Returns true if n is a floating point number"""
+	return isinstance(n, float)
+
+def flush():
+	"""Flushes the output stream that is the current value stdout"""
+	return stdout.flush()
+
+def fn(*sigs):
+	"""NOT IMPLEMENTED
+
+	use lambda or def
+	"""
+	raise NotImplementedError()
+
+fn_p = callable
+
+def fnext(x):
+	"""Same as first(next(x))"""
+	return first(next_(x))
+
+def fnil(f, *args):
+	"""Takes a function f, and returns a function that calls f, replacing None
+	arguments to f with the supplied values from args. Note that the function f
+	can take any number of arguments, not just the one(s) being None-patched."""
+
+	@wraps(f)
+	def wrapper(*old_args):
+		new_args = tuple((old is None) and new or old for (old,new) in
+				zip(old_args, args))
+		return f(*(new_args + old_args[len(new_args):]))
+
+	return wrapper
+
 def iter_p(x):
 	"""Return if x is iterable, except strings"""
 	try: iter(x)
 	except TypeError: return False
 
 	return True
+
+def next_(x):
+	"""Returns an iterator of the items after the first. Calls iter on its
+	argument.  If there are no more items, returns None."""
+	if x is None:
+		return None
+
+	xi = iter(x)
+	try:
+		next(xi)
+	except StopIteration:
+		return None
+
+	return xi
+
+
 
 def parents(h, tag=None):
 	"""Returns the immediate parents of tag, either via a Java type inheritance
@@ -1365,3 +1426,5 @@ def merge_with(f, *maps):
 				result[k] = _copy(d[k])
 	return result
 
+
+# vim:noexpandtab:

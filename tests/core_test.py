@@ -889,6 +889,75 @@ def test_flatten():
 
     assert list(flatten(None)) == []
 
+def test_float_array():
+	size = 5
+	seq    = [0,1,2,3,4.0,5.0]
+	init_val = 1
+
+	limited_f = float_array(size)
+	limited_t = float_array(size, 1)
+	limited_s = float_array(size, seq)
+
+	assert len(limited_f) == size
+	assert len(limited_t) == size
+	assert len(limited_s) == size
+
+	assert not any(limited_f)
+	assert all(limited_t)
+	assert list(limited_s) == seq[:size]
+
+	float_seq = float_array(seq)
+	assert len(float_seq) == len(seq)
+	assert list(float_seq) == [0.0,1.0,2.0,3.0,4.0,5.0]
+
+def test_float_p():
+    assert float_p(88.88) == True
+    assert float_p(88) == False
+    assert float_p('s') == False
+
+def test_fnext():
+	ctors = [list, tuple, iter]
+	tests = [
+			[0,1,2],
+			(0,1,2),
+			xrange(3),]
+	for t in tests:
+		for ctor in ctors:
+			assert fnext(ctor(t)) == 1
+
+	tests = [
+			[],
+			(),
+			set(),
+			xrange(0),
+			None]
+	for t in tests:
+		assert fnext(t) == None
+
+    assert next_([]) == None
+
+def test_fnil():
+    def all_true(*args):
+        return all(x==y for (x,y) in zip(args, "test"))
+    
+    one = fnil(all_true, 't')
+    two = fnil(all_true, 't', 'x')
+    three = fnil(all_true, 't', 'x', 's')
+    
+    for fn in [one, two, three]:
+        assert fn(None)
+    
+    assert not one(None, None)
+    
+    assert two(None, 'e')
+    assert not two('t', None)
+    
+    assert three(None, 'e', None)
+    assert not three('t', None, 's')
+
+def test_next_():
+    assert list(next_([1,2,3])) == [2,3]
+
 def test_partition():
 	string = "hello world"
 	tries = [
@@ -957,3 +1026,6 @@ def test_merge_with():
 	assert all(key in merged for key in d1.keys()+d2.keys())
 	assert merged['seven'] == [3, 4]
 
+
+
+# vim:noexpandtab
