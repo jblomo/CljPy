@@ -13,7 +13,7 @@ from decimal import Decimal
 from functools import wraps
 from numbers import Integral
 
-from lang import Delay, Promise
+from cljpy.lang import Delay, Promise
 
 # override this method to change the way nondestructive operations copy
 # arguments
@@ -1321,9 +1321,7 @@ def float_p(n):
 	"""Returns true if n is a floating point number"""
 	return isinstance(n, float)
 
-def flush():
-	"""Flushes the output stream that is the current value stdout"""
-	return stdout.flush()
+flush = stdout.flush
 
 def fn(*sigs):
 	"""NOT IMPLEMENTED
@@ -1350,6 +1348,107 @@ def fnil(f, *args):
 		return f(*(new_args + old_args[len(new_args):]))
 
 	return wrapper
+
+def get_method(multifn, dispatch_val):
+	"""NOT IMPLEMENTED
+
+	TODO: write with multimethod implementation
+	"""
+	raise NotImplementedError()
+
+def get_proxy_class(*bases):
+	"""NOT IMPLEMENTED
+
+	Doesn't really make sense with Dynamic classes
+	"""
+	raise NotImplementedError()
+
+def get_thread_bindings():
+	"""NOT IMPLEMENTED
+
+	TODO: dir() or something?
+	"""
+	raise NotImplementedError()
+
+def get_validator(iref):
+	"""NOT IMPLEMENTED
+
+	TODO: impelment with references
+	"""
+	raise NotImplementedError()
+
+def group_by(f, coll):
+    """Returns a map of the elements of coll keyed by the result of f on each
+    element.  The value at each key will be a tuple of the corresponding
+    elements, in the order they appeared in the coll"""
+    
+    def add_element(a, e):
+        a[f(e)] += (e,)
+        return a
+
+    return reduce(add_element, coll, defaultdict(tuple))
+
+hash = hash
+
+def hash_map(*keyvals):
+    """Returns a new dict with supplied mappings"""
+    return dict(zip(keyvals[::2],keyvals[1::2]))
+
+hash_set = frozenset
+
+identical_ = operator.is_
+
+def identity(x):
+    """Returns its argument"""
+    return x
+
+def if_let(bindings, then, *rest):
+	"""NOT IMPLEMENTED
+
+	TODO: macro support
+	"""
+	raise NotImplementedError()
+
+def ifn_(x):
+	"""NOT IMPLEMENTED
+
+	TODO: See what IFn interface supports
+	"""
+	raise NotImplementedError()
+
+def in_ns(name):
+	"""NOT IMPLEMENTED
+
+	TODO: namespace support
+	"""
+	raise NotImplementedError()
+
+def inc(x):
+    """Returns a number one greater than x"""
+    return x+1
+
+def init_proxy(proxy, mappings):
+	"""NOT IMPLEMENTED
+
+	TODO: proxy classes
+	"""
+	raise NotImplementedError()
+
+def instance_(c, x):
+    return isinstance(x, c)
+
+int = int
+
+def int_array(size_or_seq, init_val_or_seq='\x00'):
+	"""Creates an array of ints from values
+
+	Either provide:
+	- a size
+	- a size and initial value
+	- a size and sequence
+	- a sequence
+	"""
+	return _type_array('b', size_or_seq, init_val_or_seq)
 
 def iter_p(x):
 	"""Return if x is iterable, except strings"""

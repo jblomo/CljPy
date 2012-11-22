@@ -5,7 +5,7 @@ from datetime import datetime
 from itertools import islice
 
 from cljpy.core import *
-from lang import Promise
+from cljpy.lang import Promise
 
 def test_aget():
 	single = [1,2,3]
@@ -934,7 +934,7 @@ def test_fnext():
 	for t in tests:
 		assert fnext(t) == None
 
-    assert next_([]) == None
+	assert next_([]) == None
 
 def test_fnil():
     def all_true(*args):
@@ -954,6 +954,26 @@ def test_fnil():
     
     assert three(None, 'e', None)
     assert not three('t', None, 's')
+
+def test_group_by():
+    ints = range(10)
+    letters = "a b c d e f g h i j".split()
+
+    parity = group_by(lambda i: "odd" if i%2 else "even", ints)
+    assert parity['even'] == (0,2,4,6,8)
+    assert parity['odd']  == (1,3,5,7,9)
+
+    sounds = group_by(lambda l: "vowel" if l in set("a e i o u".split()) else "consonant", letters)
+    sounds['vowel'] == ('a', 'e', 'i')
+    sounds['consonant'] == ('b', 'c', 'd', 'f', 'g', 'h', 'j')
+
+def test_hash_map():
+    assert (hash_map('one', 1, 'two', 2, 'three', 3) ==
+           dict(one=1, two=2, three=3))
+
+def test_inc():
+    assert inc(1) == 2
+    assert inc(2**63) == 9223372036854775809
 
 def test_next_():
     assert list(next_([1,2,3])) == [2,3]
